@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Logo } from "../../";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { UserRoundCheck } from "lucide-react";
 
 const Signin = () => {
   const [email, setEmail] = useState("admin1@admin.com");
   const [password, setPassword] = useState("helloworld00;;");
 
-  // simple validation
   const validateSignin = (email, password) => {
     if (!email || !password) {
       alert("Please fill in all fields.");
@@ -27,45 +28,28 @@ const Signin = () => {
     return true;
   };
 
-  // this function handle the login form
-  const handleLogin = async (e) => {
-    // initially prevent the default function
-    e.preventDefault();
+  const HandleLogin = async (event) => {
+    event.preventDefault();
+    if (!validateSignin) return;
 
-    // terminate the function if the validation is false
-    if (!validateSignin(email, password)) return;
+    const URL = "http://127.0.0.1:8000/api/login/";
 
-    // send email and password to backend
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/login/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await axios.post(URL, { email, password });
 
-      const data = await response.json();
-      console.log("Login response:", data);
-
-      // store access and refrest token in localstorage for later requests
-      if (response.ok && data.access && data.refresh) {
-        // store the access and refresh token in localstorage...
-        localStorage.setItem("access_token", data.access);
-        localStorage.setItem("refresh_token", data.refresh);
-
-        alert("Login successful!");
-      } else {
-        alert(data.error || "Invalid credentials.");
+      if (response.access && response.refresh) {
+        localStorage.setItem("access_token", response.access);
+        localStorage.setItem("refresh_token", response.refresh);
       }
+
+      console.log(response.data);
     } catch (error) {
-      // handle the error
-      console.error("Login error:", error);
-      alert("Something went wrong. Try again.");
+      console.log(error.message);
     }
   };
 
   // form.......................
+
   return (
     <section className="bg-blue-900 dark:bg-gray-900 min-h-screen">
       <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto">
@@ -80,7 +64,7 @@ const Signin = () => {
 
             <form
               className="space-y-4 md:space-y-6"
-              onSubmit={handleLogin}
+              onSubmit={HandleLogin}
               method="POST"
             >
               <div>

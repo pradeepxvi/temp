@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Logo } from "../../";
 import { Link } from "react-router-dom";
 import { AlarmCheck } from "lucide-react";
+import axios from "axios";
 
 const Signup = () => {
   const [username, setUsername] = useState("admin");
@@ -10,7 +11,7 @@ const Signup = () => {
   const [password, setPassword] = useState("helloworld00;;");
   const [confirm_password, setConfirm_password] = useState("helloworld00;;");
 
-  const Validation = () => {
+  const validateSignup = () => {
     if (!username || !email || !number || !password || !confirm_password) {
       alert("Please fill in all fields.");
       return false;
@@ -29,40 +30,25 @@ const Signup = () => {
     return true;
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
-    if (!Validation()) return;
+  const HandleSignup = async (event) => {
+    event.preventDefault();
+
+    if (!validateSignup) return;
+
+    const URL = "http://127.0.0.1:8000/api/signup/";
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/signup/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          username,
-          number,
-          password,
-          confirm_password,
-        }),
+      const response = await axios.post(URL, {
+        username,
+        email,
+        number,
+        password,
+        confirm_password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Register successful!");
-        console.log(data);
-      } else {
-        alert(data.message || "Registration failed.");
-
-        for (const [key, value] of Object.entries(data)) {
-          alert(value);
-        }
-      }
+      console.log(response.data);
     } catch (error) {
-      console.error("Register error:", error);
-      alert("Something went wrong. Try again.");
+      console.log(error.message);
     }
   };
 
@@ -81,7 +67,7 @@ const Signup = () => {
 
             <form
               className="space-y-4 md:space-y-6"
-              onSubmit={handleSignup}
+              onSubmit={HandleSignup}
               method="POST"
             >
               <div>

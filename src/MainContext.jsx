@@ -1,46 +1,36 @@
-import { Book, BookKey, Cookie } from "lucide-react";
-import React, {
-  createContext,
-  useEffect,
-  useState,
-  useReducer,
-  act,
-} from "react";
+import { createContext, useEffect, useState, useReducer } from "react";
+import axios from "axios";
 
-// declaring of context
+// Creating a context to share global state across components
 export const CreateMainContext = createContext(null);
 
-// initial fetching of books
+// API URLs
+const book_url = "https://bookverse.com/api/books/";
+const order_url = "https://bookverse.com/api/order/";
+const cart_url = "https://bookverse.com/api/cart/";
+const wishlist_url = "https://bookverse.com/api/wishlist/";
+
+// Main Context Component
 const MainContext = ({ children }) => {
   const [Books, setBooks] = useState([]);
+
+  const GETDATA = async () => {
+    try {
+      const response = await axios.get(book_url);
+      console.log(response);
+      setBooks(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   useEffect(() => {
-    const url = "https://openlibrary.org/subjects/nepal.json";
-
-    fetch(url)
-      .then((response) => response.json())
-      .then((bookData) => {
-        const formatted = bookData.works.map((book, i) => {
-          return {
-            id: book.cover_id,
-            title: book.title,
-            isbn: book.key,
-            author: book.authors?.[0]?.name || "Unknown Author",
-            price: 500,
-            filter: "Social Fiction",
-            discountedPrice: 500 - 100,
-            coverId: book.cover_id,
-          };
-        });
-
-        setBooks(formatted);
-
-        // for developmemt
-        dispatchWishlist({ type: "init", payload: formatted.slice(0, 5) });
-        dispatchCartItems({ type: "init", payload: formatted.slice(0, 5) });
-      });
+    GETDATA();
+    fetchCartItems();
+    fetchWishlistItems();
+    fetchOrderItems();
   }, []);
 
-  // generes
   const genres = [
     "Social Fiction",
     "Mystery",
@@ -53,100 +43,83 @@ const MainContext = ({ children }) => {
     "History",
   ];
 
-  // language
   const languages = ["English", "Nepali", "Others"];
-
-  // forms
   const forms = ["Paperback", "Hardcover", "E-Book", "Audiobook"];
 
-  //
   const [filtersToApply, setFiltersToApply] = useState([]);
 
-  // handle filters on add
   const HandleOnAdd = (filter) => {
     setFiltersToApply((prev) => [...prev, filter]);
   };
 
-  // handle filter on remove
   const HandleOnRemove = (filter) => {
     setFiltersToApply((prev) => prev.filter((item) => item !== filter));
   };
 
-  // filter context ends here ==============================================
-  //
+  // ============================ Cart Context ============================
 
-  // cart context begins here ==============================================
-  // cart reducer
   const CartReducer = (currentItems, action) => {
-    if (action.type === "init") return action.payload;
-
-    if (action.type === "NEW_ITEM") {
-      return [action.payload, ...currentItems];
-    } else if (action.type === "DELETE_ITEM") {
-      return currentItems.filter(
-        (item, index) => item.id !== action.payload.id
-      );
-    } else if (action.type === "DELETE_ALL_ITEM") {
-      return [];
+    switch (action.type) {
+      case "init":
+        return action.payload;
+      case "NEW_ITEM":
+        return [action.payload, ...currentItems];
+      case "DELETE_ITEM":
+        return currentItems.filter((item) => item.id !== action.payload.id);
+      case "DELETE_ALL_ITEM":
+        return [];
+      default:
+        return currentItems;
     }
-    return currentItems;
   };
 
-  const [cartItems, dispatchCartItems] = useReducer(
-    CartReducer,
-    Books.slice(0, 5)
-  );
+  const [cartItems, dispatchCartItems] = useReducer(CartReducer, []);
 
-  // handle items on adding to cart
+  const fetchCartItems = async () => {
+    try {
+      const response = await axios.get(cart_url);
+      dispatchCartItems({ type: "init", payload: response.data });
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
   const HandleCartItemOnAdd = async (book) => {
+    try {
+      const response = await axios.put(cart_url, book);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
     alert("Cart item added");
-    console.log("Cart item added:", book);
-
-    // // Send to backend
-    // await fetch("https://your-backend.com/api/cart", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify(book),
-    // });
-
-    dispatchCartItems({
-      type: "NEW_ITEM",
-      payload: book,
-    });
+    dispatchCartItems({ type: "NEW_ITEM", payload: book });
   };
 
-  // handle deleting a cart item
   const HandleCartItemOnDelete = async (id) => {
+    try {
+      const response = await axios.delete(`${cart_url}${id}`);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
     alert("Cart item deleted");
-    console.log(
-      "Cart item deleted",
-      Books.find((book) => book.id === id)
-    );
-
-    // // Send delete to backend
-    // await fetch(`https://your-backend.com/api/cart/${id}`, {
-    //   method: "DELETE",
-    // });
-
-    dispatchCartItems({
-      type: "DELETE_ITEM",
-      payload: { id },
-    });
+    dispatchCartItems({ type: "DELETE_ITEM", payload: { id } });
   };
 
-  // handle deleting all cart items
   const HandleCartItemOnDeleteALL = async () => {
+    try {
+      const response = await axios.delete(cart_url);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
     alert("Cart is cleared");
-
-    // // Delete all on backend (you might need a custom route)
-    // await fetch("", {
-    //   method: "DELETE",
-    // });
-
     dispatchCartItems({ type: "DELETE_ALL_ITEM" });
   };
 
-  // calculate subtotal, shipping, total
   const [subtotal, setSubtotal] = useState(0);
   const [shipping, setShipping] = useState(0);
   const [total, setTotal] = useState(0);
@@ -157,99 +130,146 @@ const MainContext = ({ children }) => {
       0
     );
     setSubtotal(newSubtotal);
-
     const newShippingCost = newSubtotal > 0 ? 50 : 0;
     setShipping(newShippingCost);
     setTotal(newSubtotal + newShippingCost);
   }, [cartItems]);
 
-  // cart context ends here ==============================================
+  // ============================ Wishlist Context ============================
 
-  // wishlist context begins here==============================================
-
-  // wishlist reducer
   const wishlistReducer = (currentItems, action) => {
-    if (action.type === "init") return action.payload;
-    if (action.type === "ADD_ITEM") return [action.payload, ...currentItems];
-    if (action.type === "DELETE_ITEM")
-      return currentItems.filter((book, index) => book.id != action.payload.id);
-    if (action.type === "DELETE_All") return [];
-    return currentItems;
+    switch (action.type) {
+      case "init":
+        return action.payload;
+      case "ADD_ITEM":
+        return [action.payload, ...currentItems];
+      case "DELETE_ITEM":
+        return currentItems.filter((book) => book.id !== action.payload.id);
+      case "DELETE_All":
+        return [];
+      default:
+        return currentItems;
+    }
   };
 
   const [wishlist, dispatchWishlist] = useReducer(wishlistReducer, []);
 
-  const HandleWishlistOnAdd = (item) => {
-    console.log("Added on wishlist", item);
+  const fetchWishlistItems = async () => {
+    try {
+      const response = await axios.get(wishlist_url);
+      dispatchWishlist({ type: "init", payload: response.data });
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  const HandleWishlistOnAdd = async (item) => {
+    try {
+      const response = await axios.put(wishlist_url, item);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
     dispatchWishlist({ type: "ADD_ITEM", payload: item });
   };
 
-  const HandleWishlistOnDelete = (id) => {
-    console.log(
-      "Book Deleted",
-      Books.find((book) => book.id === id)
-    );
+  const HandleWishlistOnDelete = async (id) => {
+    try {
+      const response = await axios.delete(`${wishlist_url}${id}/`);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
 
     dispatchWishlist({ type: "DELETE_ITEM", payload: { id } });
   };
 
-  const HandleWishlistOnDeleteAll = () => {
-    console.log("Deleted all from wishlist.");
+  const HandleWishlistOnDeleteAll = async () => {
+    try {
+      const response = await axios.delete(wishlist_url);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
     dispatchWishlist({ type: "DELETE_All" });
   };
 
-  // functio to add all wishlist item to cart at once
-  const addAllWishlistToCart = () => {
-    console.log("all wishlist are added to cart.");
-    wishlist.forEach((element) => {
-      dispatchCartItems({
-        type: "NEW_ITEM",
-        payload: element,
-      });
+  const addAllWishlistToCart = async () => {
+    wishlist.forEach((item) => {
+      HandleCartItemOnAdd(item);
+      dispatchCartItems({ type: "NEW_ITEM", payload: item });
     });
+    HandleWishlistOnDeleteAll();
   };
-  // wishlist ==============================================
 
-  // order context begins here ====================
+  // ============================ Order Context ============================
+
   const orderReducer = (currentItems, action) => {
-    if (action.type === "NEW_ITEM") return [action.payload, ...currentItems];
-    if (action.type === "DELETE_ITEM")
-      return currentItems.filter((_, index) => index !== action.payload.index);
-    if (action.type === "DELETE_ALL") return [];
-    return currentItems;
+    switch (action.type) {
+      case "init":
+        return action.payload;
+      case "NEW_ITEM":
+        return [action.payload, ...currentItems];
+      case "DELETE_ITEM":
+        return currentItems.filter(
+          (_, index) => index !== action.payload.index
+        );
+      case "DELETE_ALL":
+        return [];
+      default:
+        return currentItems;
+    }
   };
 
   const [order, dispatchOrder] = useReducer(orderReducer, []);
 
-  const handleOrderOnAdd = (orderItem) => {
-    dispatchOrder({
-      type: "NEW_ITEM",
-      payload: orderItem,
-    });
+  const fetchOrderItems = async () => {
+    try {
+      const response = await axios.get(order_url);
+      dispatchOrder({ type: "init", payload: response.data });
+    } catch (error) {
+      console.log(error.message);
+    }
   };
 
-  // Delete specific item
-  const handleOrderOnDelete = (index) => {
-    dispatchOrder({
-      type: "DELETE_ITEM",
-      payload: { index },
-    });
+  const handleOrderOnAdd = async (orderItem) => {
+    try {
+      const response = await axios.put(order_url, orderItem);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
+    dispatchOrder({ type: "NEW_ITEM", payload: orderItem });
   };
 
-  // Delete all items
-  const handleOrderOnDeleteAll = () => {
-    dispatchOrder({
-      type: "DELETE_ALL",
-    });
+  const handleOrderOnDelete = async (index, id) => {
+    try {
+      const response = await axios.delete(`${order_url}${id}/`);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+    dispatchOrder({ type: "DELETE_ITEM", payload: { index } });
   };
 
-  // order context ends here ====================
+  const handleOrderOnDeleteAll = async () => {
+    try {
+      const response = await axios.delete(order_url);
+      console.log(response.data);
+    } catch (error) {
+      console.log(error.message);
+    }
+
+    dispatchOrder({ type: "DELETE_ALL" });
+  };
 
   return (
     <CreateMainContext.Provider
       value={{
         Books,
-
         genres,
         languages,
         forms,
@@ -270,7 +290,6 @@ const MainContext = ({ children }) => {
         HandleWishlistOnDeleteAll,
         addAllWishlistToCart,
 
-        // order
         order,
         handleOrderOnAdd,
         handleOrderOnDelete,
